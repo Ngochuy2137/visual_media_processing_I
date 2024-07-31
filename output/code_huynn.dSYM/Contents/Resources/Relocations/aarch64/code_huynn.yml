@@ -1,0 +1,10 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     "/Users/huynn/Library/CloudStorage/OneDrive-Personal/WORK/3. DU HỌC/6. Master - NAIST/5. Study process/Sem-2/12. Visual media processing/Lec 8/depth_estimation_v4/output/code_huynn"
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _img_in, symObjAddr: 0x0, symBinAddr: 0x100002614, symSize: 0x1F4 }
+  - { offsetInCU: 0x8C, offset: 0x8C, size: 0x8, addend: 0x0, symName: _img_in, symObjAddr: 0x0, symBinAddr: 0x100002614, symSize: 0x1F4 }
+  - { offsetInCU: 0x114, offset: 0x114, size: 0x8, addend: 0x0, symName: _img_out, symObjAddr: 0x1F4, symBinAddr: 0x100002808, symSize: 0xEC }
+  - { offsetInCU: 0x170, offset: 0x170, size: 0x8, addend: 0x0, symName: _depth_estimation, symObjAddr: 0x2E0, symBinAddr: 0x1000028F4, symSize: 0x324 }
+  - { offsetInCU: 0x274, offset: 0x274, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x604, symBinAddr: 0x100002C18, symSize: 0x564 }
+...

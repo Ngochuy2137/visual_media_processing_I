@@ -1,140 +1,156 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <time.h>
+#include <limits.h>
+// #include <math.h>
 
-void img_out(const char *n,int img[][256]){
-        
-    FILE *fp;
-    int i,j;
+int IMG_SIZE = 256;
+int MAX_DISP = 30;
 
-    fp = fopen(n,"w");
-    fprintf(fp, "P2\n256 256\n255\n");
-    for (j=0;j<256;j++){
-        for (i=0;i<256;i++){
-            fprintf(fp, "%d ", img[j][i]);
-         }
-         fprintf(fp, "\n");
-    }
-    fclose(fp);
-}
+// void depth_estimation(int img1[IMG_SIZE][IMG_SIZE], int img2[IMG_SIZE][IMG_SIZE], int img3[IMG_SIZE][IMG_SIZE]) {
+//     for (int i = 10; i < IMG_SIZE - 10; i++) {
+//         for (int j = 10; j < IMG_SIZE - 10; j++) {
+//             int min_ssd = INT_MAX;
+//             int best_disparity = 0;
+//             for (int d = 0; d < MAX_DISP; d++) {
+//                 if (j - d < 10) continue;
+//                 int ssd = 0;
+//                 for (int k = -1; k <= 1; k++) {
+//                     for (int l = -1; l <= 1; l++) {
+//                         int diff = img1[i + k][j + l] - img2[i + k][j + l - d];
+//                         ssd += diff * diff;
+//                     }
+//                 }
+//                 if (ssd < min_ssd) {
+//                     min_ssd = ssd;
+//                     best_disparity = d;
+//                 }
+//             }
+//             img3[i][j] = best_disparity;
+//         }
+//     }
+// }
 
-void img_in(const char *n,int img[][256]){
-        
-    FILE *fp;
-    int i,j;
-    char tmps[256],str[4024],*tok;
+// --------------------------------------------- New code ---------------------------------------------
 
-    if ((fp = fopen(n,"r"))==NULL){
-        printf("Cannot open %s file!!\n",n);
-        exit(0);
-    };
-    fscanf(fp, "%s",tmps);
-    fscanf(fp, "%d %d",&i,&j);
-    fscanf(fp, "%d ",&i);
-    j=0;
-    while(fgets(str, 4024, fp) != NULL) {
-        tok = strtok( str, " ");
-        i=0;
-        img[j][i++]=atoi(tok);
-        while( tok != NULL ){
-            img[j][i]=atoi(tok);
-            tok = strtok( NULL, " \n" ); 
-            i++;
-        }
-        j++;
-	}
-    fclose(fp);
-}
+void depth_estimation(int img1[256][256], int img2[256][256], int img3[256][256]){
+    int IMG_SIZE = 256;
+    int IGNORE_SIZE = 16;
+    int WIN_SIZE = 16;
+    int MAX_DISP = 30;
 
-/////////////////depth ectimation //////////////////
-///////  修正はここから
+    int half_win = WIN_SIZE / 2;
+    int i, j, d, x, y;
+    int a = 0;
+    #pragma omp parallel for private(i, j, d, x, y)
+    for (j = IGNORE_SIZE+half_win; j < IMG_SIZE - (IGNORE_SIZE+half_win); j++) {
+        for (i = IGNORE_SIZE+half_win; i < IMG_SIZE - (IGNORE_SIZE+half_win); i++) {
+            int best_disparity = 0;
+            int min_sad = 999999;
 
-void depth_estimation(int img1[][256],int img2[][256],int img3[][256]){
-    int i,j,a,b;
-    int d,d2,dmin,dt;
+            for (d = 0; d <= MAX_DISP; d++) {
+                int sad = 0;
 
-    for (j=10;j<256-10;j++){
-        for (i=10;i<256-10;i++){
-            d2=0;dmin=999999;
-
-            for (d = 0; d <=30; d++){
-                dt=0;
-                for (b=-1;b<=1;b++){
-                    for (a=-1;a<=1;a++){
-                        if (img1[j+b][i+a]!=img2[j+b][i+a+d]){
-                            dt ++;
-                        }                       
-                    }   
-                } 
-                if (dmin > dt ) {
-                    d2 = d;
-                    dmin = dt;
+                for (y = -half_win; y <= half_win; y++) {
+                    for (x = -half_win; x <= half_win; x++) {
+                        int ref_pixel = img1[j + y][i + x];
+                        int tgt_pixel = (i + x + d < IMG_SIZE) ? img2[j + y][i + x + d] : 0;
+                        sad += abs(ref_pixel - tgt_pixel);
+                    }
                 }
-            }    
-        img3[j][i] = d2;
+
+                if (sad < min_sad) {
+                    min_sad = sad;
+                    best_disparity = d;
+                    if (d != 0) {
+                        a = d;
+                        printf("a = %d\n", a);
+                    }
+                }
+            }
+
+            img3[j][i] = best_disparity;
         }
     }
 }
 
-///////  修正はここまで
-////////////////////////////////////////////////
 
+// --------------------------------------------- Nam code ---------------------------------------------
 
+// #include <math.h>
+// void depth_estimation(int img1[][256], int img2[][256], int img3[][256]){
+//     int IMG_SIZE = 256;
+//     int WIN_SIZE = 5;
+//     int MAX_DISP = 30;
 
+//     int half_win = WIN_SIZE / 2;
+//     int i, j, d, x, y;
+
+//     #pragma omp parallel for private(i, j, d, x, y)
+//     for (j = half_win; j < IMG_SIZE - half_win; j++) {
+//         for (i = half_win; i < IMG_SIZE - half_win; i++) {
+//             int best_disparity = 0;
+//             int min_sad = 999999;
+
+//             for (d = 0; d <= MAX_DISP; d++) {
+//                 int sad = 0;
+
+//                 for (y = -half_win; y <= half_win; y++) {
+//                     for (x = -half_win; x <= half_win; x++) {
+//                         int ref_pixel = img1[j + y][i + x];
+//                         int tgt_pixel = (i + x + d < IMG_SIZE) ? img2[j + y][i + x + d] : 0;
+//                         sad += abs(ref_pixel - tgt_pixel);
+//                     }
+//                 }
+
+//                 if (sad < min_sad) {
+//                     min_sad = sad;
+//                     best_disparity = d;
+//                 }
+//             }
+
+//             img3[j][i] = best_disparity;
+//         }
+//     }
+// }
 int main() {
-    
-    int i,j,k,error=0;
-    char str[256]={0};
-    double ave_err=0,ave_time=0;
+    int img1[IMG_SIZE][IMG_SIZE];
+    int img2[IMG_SIZE][IMG_SIZE];
+    int img3[IMG_SIZE][IMG_SIZE];
 
-    int fnum=10;  /* 画像ペア数　入力ファイルの数を変更した場合ここも修正が必要　*/ 
-    char imname[][256]={"","dot01","dot02","dot03","dot04","dot05","dot06","dot07","dot08","dot09","dot10"}; /* 入力ステレオ画像名*/
+    // Load images from files (example with dot01-1.pgm and dot01-2.pgm)
+    FILE *f1 = fopen("/Users/huynn/Library/CloudStorage/OneDrive-Personal/WORK/3. DU HỌC/6. Master - NAIST/5. Study process/Sem-2/12. Visual media processing/Lec 8/depth_estimation_v4/dot2/dot01-1.pgm", "r");
+    FILE *f2 = fopen("/Users/huynn/Library/CloudStorage/OneDrive-Personal/WORK/3. DU HỌC/6. Master - NAIST/5. Study process/Sem-2/12. Visual media processing/Lec 8/depth_estimation_v4/dot2/dot01-2.pgm", "r");
+    // Skip the PGM header
+    char header[20];
+    fgets(header, sizeof(header), f1);
+    fgets(header, sizeof(header), f2);
+    fgets(header, sizeof(header), f1);
+    fgets(header, sizeof(header), f2);
 
-
-    int img1[256][256],img2[256][256]; /* 入力ステレオ画像*/
-    int img_gt[256][256]; /* 正解データ画像*/
-    int img3[256][256]={0}; /* 推定結果画像*/
-    
-    clock_t start_clock, end_clock;
-
-    k=1;
-    while (k <= fnum){
-        strcpy(str,"dot2/");
-        strcat(str,imname[k]);
-        img_in(strcat(str,"-1.pgm"),img1);
-
-        strcpy(str,"dot2/");
-        strcat(str,imname[k]);
-        img_in(strcat(str,"-2.pgm"),img2);
-
-        strcpy(str,"dot2/");
-        strcat(str,imname[k]);
-        img_in(strcat(str,"-gt.pgm"),img_gt);
-
-        start_clock = clock();
-        
-        depth_estimation(img1,img2,img3);
-        
-        end_clock = clock();
-
-        /* 正答率判定　*/
-        error = 0;
-        for (j=0;j<256;j++){
-            for (i=0;i<256;i++){
-                if (img3[j][i] != img_gt[j][i] )error ++; 
-            }
+    // Read image data
+    for (int i = 0; i < IMG_SIZE; i++) {
+        for (int j = 0; j < IMG_SIZE; j++) {
+            fscanf(f1, "%d", &img1[i][j]);
+            fscanf(f2, "%d", &img2[i][j]);
         }
-
-        printf("%s -> Error Rate: %lf time: %f\n",imname[k],error/(j*i*1.0), (double)(end_clock - start_clock) / CLOCKS_PER_SEC);
-        strcpy(str,"");
-        strcat(str,imname[k]);
-        img_out(strcat(str,"-res.pgm"),img3);
-        ave_err +=error/(j*i*1.0);
-        ave_time += (double)(end_clock - start_clock) / CLOCKS_PER_SEC;
-        k++;
     }
 
-    printf("Average Error Rate: %lf Average time: %lf \n",ave_err/(k-1),ave_time/(k-1)  );
+    fclose(f1);
+    fclose(f2);
 
-} 
+    // Call depth estimation function
+    depth_estimation(img1, img2, img3);
+
+    // Save the resulting depth map (example with dot01_res.pgm)
+    FILE *f3 = fopen("dot01_res.pgm", "w");
+    fprintf(f3, "P2\n%d %d\n255\n", IMG_SIZE, IMG_SIZE);
+    for (int i = 0; i < IMG_SIZE; i++) {
+        for (int j = 0; j < IMG_SIZE; j++) {
+            fprintf(f3, "%d ", img3[i][j]);
+        }
+        fprintf(f3, "\n");
+    }
+    fclose(f3);
+
+    return 0;
+}
